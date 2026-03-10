@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SYSTEM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #00ff41;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  canvas {
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 0;
+  }
+
+  #overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  #terminal {
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #00ff41;
+    border-radius: 4px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 0 30px #00ff4155, 0 0 60px #00ff4122;
+  }
+
+  #terminal-title {
+    font-size: 11px;
+    color: #00ff41aa;
+    border-bottom: 1px solid #00ff4133;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+  }
+
+  #log {
+    font-size: 12px;
+    line-height: 1.8;
+    min-height: 200px;
+  }
+
+  .log-line {
+    display: block;
+    opacity: 0;
+    animation: fadeIn 0.1s forwards;
+  }
+
+  .ok { color: #00ff41; }
+  .warn { color: #ffcc00; }
+  .err { color: #ff4444; }
+  .info { color: #44ccff; }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  #progress-wrap {
+    margin-top: 14px;
+    border-top: 1px solid #00ff4133;
+    padding-top: 12px;
+    display: none;
+  }
+
+  #progress-label {
+    font-size: 11px;
+    color: #00ff41aa;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+
+  #progress-bar-bg {
+    background: #001a00;
+    border: 1px solid #00ff4155;
+    height: 14px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ff41, #00cc33);
+    box-shadow: 0 0 10px #00ff41;
+    transition: width 0.05s linear;
+  }
+
+  #success-screen {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #success-screen.show { display: flex; }
+
+  .skull {
+    font-size: 80px;
+    animation: pulse 1s infinite alternate;
+    margin-bottom: 20px;
+  }
+
+  @keyframes pulse {
+    from { text-shadow: 0 0 10px #00ff41; transform: scale(1); }
+    to   { text-shadow: 0 0 40px #00ff41, 0 0 80px #00ff41; transform: scale(1.05); }
+  }
+
+  #success-screen h1 {
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: #00ff41;
+    text-shadow: 0 0 20px #00ff41;
+    margin-bottom: 10px;
+  }
+
+  #success-screen p {
+    font-size: 12px;
+    color: #00ff4199;
+    letter-spacing: 2px;
+    margin-top: 6px;
+  }
+
+  #device-info {
+    margin-top: 24px;
+    background: rgba(0,255,65,0.07);
+    border: 1px solid #00ff4133;
+    border-radius: 4px;
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 11px;
+    color: #00ff41bb;
+    line-height: 2;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  #device-info span { color: #00ff41; }
+
+  .blink { animation: blinker 1s step-start infinite; }
+  @keyframes blinker { 50% { opacity: 0; } }
+
+  #scanline {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<div id="scanline"></div>
+<canvas id="matrix"></canvas>
+
+<div id="overlay">
+  <div id="terminal">
+    <div id="terminal-title">◈ TERMINAL — REMOTE ACCESS v2.1 ◈</div>
+    <div id="log"></div>
+    <div id="progress-wrap">
+      <div id="progress-label">EXTRACTING DATA... <span class="blink">█</span></div>
+      <div id="progress-bar-bg"><div id="progress-bar"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="success-screen">
+  <div class="skull">💀</div>
+  <h1>ACCESS GRANTED</h1>
+  <p>TELEFON COMPROMIS CU SUCCES</p>
+  <p style="margin-top:4px; font-size:10px; color:#ff444499;">[ TOATE DATELE AU FOST EXTRASE ]</p>
+  <div id="device-info">
+    📱 DEVICE: <span id="d-device">—</span><br>
+    🌐 IP: <span id="d-ip">—</span><br>
+    📍 LOCATIE: <span id="d-loc">—</span><br>
+    🔋 BATERIE: <span id="d-bat">—</span><br>
+    📶 RETEA: <span id="d-net">—</span>
+  </div>
+  <p style="margin-top:20px; font-size:10px; color:#00ff4155; letter-spacing:3px;">~~ CLASA 2025 ~~</p>
+</div>
+
+<script>
+// ── Matrix rain ──────────────────────────────────────────
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const cols = Math.floor(canvas.width / 16);
+const drops = Array(cols).fill(1);
+const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF<>{}[]';
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00ff41';
+  ctx.font = '14px monospace';
+  drops.forEach((y, i) => {
+    const char = chars[Math.floor(Math.random() * chars.length)];
+    ctx.fillStyle = Math.random() > 0.95 ? '#ffffff' : '#00ff41';
+    ctx.fillText(char, i * 16, y * 16);
+    if (y * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  });
+}
+setInterval(drawMatrix, 50);
+
+// ── Terminal log ──────────────────────────────────────────
+const log = document.getElementById('log');
+const progressWrap = document.getElementById('progress-wrap');
+const progressBar = document.getElementById('progress-bar');
+
+const messages = [
+  { text: '> Initializare conexiune...', cls: 'info', delay: 300 },
+  { text: '> Scanare porturi: 22, 443, 8080...', cls: 'ok', delay: 900 },
+  { text: '> Port 443 deschis ✓', cls: 'ok', delay: 1500 },
+  { text: '> Bypass firewall... [OK]', cls: 'ok', delay: 2200 },
+  { text: '> Injectare payload v3.7...', cls: 'warn', delay: 3000 },
+  { text: '> Acces root obtinut ✓', cls: 'ok', delay: 3900 },
+  { text: '> Citire contacte...    [████ 100%]', cls: 'ok', delay: 4700 },
+  { text: '> Citire mesaje SMS...  [████ 100%]', cls: 'ok', delay: 5400 },
+  { text: '> Citire galerie foto... [████ 100%]', cls: 'ok', delay: 6100 },
+  { text: '> Activare microfon...  [OK]', cls: 'warn', delay: 6800 },
+  { text: '> Activare camera...    [OK]', cls: 'warn', delay: 7400 },
+  { text: '> Localizare GPS...     [OK]', cls: 'warn', delay: 7900 },
+  { text: '> Criptare & transmitere date...', cls: 'err', delay: 8500 },
+];
+
+messages.forEach(({ text, cls, delay }) => {
+  setTimeout(() => {
+    const span = document.createElement('span');
+    span.className = `log-line ${cls}`;
+    span.textContent = text;
+    log.appendChild(span);
+    log.scrollTop = log.scrollHeight;
+  }, delay);
+});
+
+// Progress bar
+setTimeout(() => {
+  progressWrap.style.display = 'block';
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct += 1;
+    progressBar.style.width = pct + '%';
+    if (pct >= 100) clearInterval(iv);
+  }, 50);
+}, 8600);
+
+// Success screen
+setTimeout(showSuccess, 14000);
+
+async function showSuccess() {
+  // Collect fake-but-real device info
+  const ua = navigator.userAgent;
+  const isMobile = /iPhone|Android|iPad/i.test(ua);
+  const deviceName = isMobile
+    ? (/iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : 'Android Device')
+    : 'Desktop / Laptop';
+
+  document.getElementById('d-device').textContent = deviceName;
+  document.getElementById('d-loc').textContent = 'Se incarca...';
+  document.getElementById('d-ip').textContent = 'Se incarca...';
+
+  // Battery (real API if available)
+  if (navigator.getBattery) {
+    try {
+      const bat = await navigator.getBattery();
+      document.getElementById('d-bat').textContent =
+        Math.round(bat.level * 100) + '% ' + (bat.charging ? '⚡ (incarcare)' : '');
+    } catch { document.getElementById('d-bat').textContent = 'N/A'; }
+  } else {
+    document.getElementById('d-bat').textContent = 'N/A';
+  }
+
+  // Network
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  document.getElementById('d-net').textContent = conn
+    ? (conn.effectiveType || conn.type || 'WiFi/Mobile')
+    : 'WiFi / 4G';
+
+  // Fake IP (public fetch)
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    document.getElementById('d-ip').textContent = d.ip;
+  } catch { document.getElementById('d-ip').textContent = '192.168.' + rand(1,254) + '.' + rand(1,254); }
+
+  // Fake location label
+  document.getElementById('d-loc').textContent = 'Romania, RO 🇷🇴';
+
+  document.getElementById('success-screen').classList.add('show');
+}
+
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+</script>
+</body>
+</html>
